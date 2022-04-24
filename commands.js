@@ -1,10 +1,15 @@
-import { getRPSChoices } from "./game.js"
+import { response } from "express"
 import { capitalize, DiscordRequest } from "./utils.js"
 
 export async function HasGuildCommands(appId, guildId, commands) {
   if (guildId === "" || appId === "") return
 
   commands.forEach((c) => HasGuildCommand(appId, guildId, c))
+}
+
+export async function DeleteGuildCommands(appId, guildId, commands) {
+  if (guildId === "" || appId === "") return
+  commands.forEach((c) => DeleteGuildCommand(appId, guildId, c))
 }
 
 // Checks for a command
@@ -43,19 +48,91 @@ export async function InstallGuildCommand(appId, guildId, command) {
   }
 }
 
-// Get the game choices from game.js
-function createCommandChoices() {
-  const choices = getRPSChoices()
-  const commandChoices = []
-
-  for (let choice of choices) {
-    commandChoices.push({
-      name: capitalize(choice),
-      value: choice.toLowerCase(),
-    })
+// Deletes command
+export async function DeleteGuildCommand(appId, guildId, commandId) {
+  // API endpoint to get and post guild commands
+  const endpoint = `applications/${appId}/guilds/${guildId}/commands/${commandId}`
+  // install command
+  try {
+    await DiscordRequest(endpoint, { method: "DELETE", body: command })
+    console.log(`"${command["name"]}" has been deleted`)
+  } catch (err) {
+    console.error(err)
   }
+}
 
-  return commandChoices
+//Get all commands
+export async function GetCommands(appId, guildId) {
+  // API endpoint to retrieve all commands
+  const endpoint = `applications/${appId}/guilds/${guildId}/commands`
+  try {
+    const res = await DiscordRequest(endpoint, { method: "GET" })
+    const cmds = await res.json()
+    //console.log(cmds)
+    return cmds
+  } catch (err) {
+    console.log(err)
+  }
+}
+
+//gets a single guild command
+
+export function GetCommand(appId, guildId, commandName) {
+  const cmd = GetCommands(appId, guildId).then((res) =>
+    res.filter((c) => c.name === commandName)
+  )
+  return cmd
+}
+
+// export async function GetCommand(appId, guildId, commandName) {
+//   // API endpoint to retrieve all commands
+//   const endpoint = `applications/${appId}/guilds/${guildId}/commands/`
+//   try {
+//     const res = await DiscordRequest(endpoint, { method: "GET" })
+//     const commandResponse = await res.json().then((arr) => {
+//       arr.filter((c) => c.name === commandName)
+//     })
+//   } catch (err) {
+//     console.log(err)
+//   }
+// }
+
+export async function GetExistingCommandIds(appId, guildId) {
+  //API endpoint to get and list command IDs
+  const endpoint = `applications/${appId}/guilds/${guildId}/commands`
+  try {
+    const res = await DiscordRequest(endpoint, { method: "GET" })
+    const commandIds = await res.json().then((arr) =>
+      arr.map((c) => {
+        return c.id
+      })
+    )
+    console.log(commandIds)
+    return commandIds
+  } catch (err) {
+    console.log(err)
+  }
+}
+
+export async function GetExistingCommandId(appId, guildId, commandName) {
+  //API endpoint to get and list command IDs
+  const endpoint = `applications/${appId}/guilds/${guildId}/commands`
+  try {
+    const res = await DiscordRequest(endpoint, { method: "GET" })
+    const commandId = await res.json().then((arr) =>
+      arr
+        .filter((c) => {
+          return c.name === commandName
+        })
+        .map((c) => {
+          return c.id
+        })
+    )
+    console.log(commandId)
+    return commandId
+  } catch (err) {
+    console.log(err)
+  }
 }
 
 // Simple test command
@@ -63,35 +140,4 @@ export const TEST_COMMAND = {
   name: "test",
   description: "Basic guild command",
   type: 1,
-}
-
-// Command containing options
-export const CHALLENGE_COMMAND = {
-  name: "challenge",
-  description: "Challenge to a match of rock paper scissors",
-  options: [
-    {
-      type: 3,
-      name: "object",
-      description: "Pick your object",
-      required: true,
-      choices: createCommandChoices(),
-    },
-  ],
-  type: 1,
-}
-
-// Faction war command
-export const FACTION_COMMAND = {
-  name: "faction",
-  description: "Create a new faction war.",
-  options: [
-    {
-      type: 3,
-      name: "factions",
-      description: "Pick how many factions you want.",
-      required: true,
-      choices: createCommandChoices(),
-    },
-  ],
 }
