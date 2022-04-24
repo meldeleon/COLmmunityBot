@@ -17,6 +17,7 @@ import {
   HasGuildCommands,
   GetCommands,
   GetCommand,
+  GetCommandsAttributes,
   TEST_COMMAND,
 } from "./commands.js"
 
@@ -65,9 +66,7 @@ app.post("/interactions", async function (req, res) {
 
 app.listen(3000, () => {
   console.log("Listening on port 3000")
-  console.log(
-    GetCommand(process.env.APP_ID, process.env.GUILD_ID, TEST_COMMAND)
-  )
+  GetCommandsAttributes(process.env.APP_ID, process.env.GUILD_ID, "id")
   //console.log(GetCommands(process.env.APP_ID, process.env.GUILD_ID))
   // Check if guild commands from commands.json are installed (if not, install them)
   HasGuildCommands(process.env.APP_ID, process.env.GUILD_ID, [TEST_COMMAND])

@@ -7,11 +7,6 @@ export async function HasGuildCommands(appId, guildId, commands) {
   commands.forEach((c) => HasGuildCommand(appId, guildId, c))
 }
 
-export async function DeleteGuildCommands(appId, guildId, commands) {
-  if (guildId === "" || appId === "") return
-  commands.forEach((c) => DeleteGuildCommand(appId, guildId, c))
-}
-
 // Checks for a command
 async function HasGuildCommand(appId, guildId, command) {
   // API endpoint to get and post guild commands
@@ -48,19 +43,6 @@ export async function InstallGuildCommand(appId, guildId, command) {
   }
 }
 
-// Deletes command
-export async function DeleteGuildCommand(appId, guildId, commandId) {
-  // API endpoint to get and post guild commands
-  const endpoint = `applications/${appId}/guilds/${guildId}/commands/${commandId}`
-  // install command
-  try {
-    await DiscordRequest(endpoint, { method: "DELETE", body: command })
-    console.log(`"${command["name"]}" has been deleted`)
-  } catch (err) {
-    console.error(err)
-  }
-}
-
 //Get all commands
 export async function GetCommands(appId, guildId) {
   // API endpoint to retrieve all commands
@@ -76,7 +58,6 @@ export async function GetCommands(appId, guildId) {
 }
 
 //gets a single guild command
-
 export function GetCommand(appId, guildId, commandName) {
   const cmd = GetCommands(appId, guildId).then((res) =>
     res.filter((c) => c.name === commandName)
@@ -84,55 +65,33 @@ export function GetCommand(appId, guildId, commandName) {
   return cmd
 }
 
-// export async function GetCommand(appId, guildId, commandName) {
-//   // API endpoint to retrieve all commands
-//   const endpoint = `applications/${appId}/guilds/${guildId}/commands/`
-//   try {
-//     const res = await DiscordRequest(endpoint, { method: "GET" })
-//     const commandResponse = await res.json().then((arr) => {
-//       arr.filter((c) => c.name === commandName)
-//     })
-//   } catch (err) {
-//     console.log(err)
-//   }
-// }
+//delete all commands
+export async function DeleteGuildCommands(appId, guildId, commands) {
+  if (guildId === "" || appId === "") return
+  commands.forEach((c) => DeleteGuildCommand(appId, guildId, c))
+}
 
-export async function GetExistingCommandIds(appId, guildId) {
-  //API endpoint to get and list command IDs
-  const endpoint = `applications/${appId}/guilds/${guildId}/commands`
+// deletes command
+export async function DeleteGuildCommand(appId, guildId, commandId) {
+  // API endpoint to get and post guild commands
+  const endpoint = `applications/${appId}/guilds/${guildId}/commands/${commandId}`
+  // install command
   try {
-    const res = await DiscordRequest(endpoint, { method: "GET" })
-    const commandIds = await res.json().then((arr) =>
-      arr.map((c) => {
-        return c.id
-      })
-    )
-    console.log(commandIds)
-    return commandIds
+    await DiscordRequest(endpoint, { method: "DELETE", body: command })
+    console.log(`"${command["name"]}" has been deleted`)
   } catch (err) {
-    console.log(err)
+    console.error(err)
   }
 }
 
-export async function GetExistingCommandId(appId, guildId, commandName) {
-  //API endpoint to get and list command IDs
-  const endpoint = `applications/${appId}/guilds/${guildId}/commands`
-  try {
-    const res = await DiscordRequest(endpoint, { method: "GET" })
-    const commandId = await res.json().then((arr) =>
-      arr
-        .filter((c) => {
-          return c.name === commandName
-        })
-        .map((c) => {
-          return c.id
-        })
-    )
-    console.log(commandId)
-    return commandId
-  } catch (err) {
-    console.log(err)
-  }
+export async function GetCommandsAttributes(appId, guildId, attribute) {
+  let attributes = []
+  const commands = await GetCommands(appId, guildId)
+  commands.forEach((cmd) => {
+    attributes.push(cmd[attribute])
+  })
+  console.log(attributes)
+  return attributes
 }
 
 // Simple test command
