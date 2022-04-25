@@ -69,6 +69,19 @@ function createFaction(no, factionName) {
   }
 }
 
+export function assignFaction(name, id) {
+  let testFactionResponse = {
+    number: 1,
+    name: "soonersons",
+    color: "blue",
+    discordChannel:
+      "https://discord.com/channels/965039544183431188/965077230952804362",
+    userName: name,
+    userID: id,
+  }
+  return testFaction
+}
+
 /*
 {
    number: 1,
@@ -86,7 +99,3 @@ function createFaction(no, factionName) {
 */
 
 //mentions looks like <@user_id> like <@86890631690977280> more: https://discordjs.guide/miscellaneous/parsing-mention-arguments.html#how-discord-mentions-work
-
-export function assignFaction(p1) {
-  let faction
-}

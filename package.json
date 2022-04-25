@@ -10,10 +10,7 @@
   "author": "Shay DeWael",
   "license": "MIT",
   "dependencies": {
-    "@discordjs/rest": "^0.4.1",
-    "discord-api-types": "^0.31.2",
     "discord-interactions": "^3.2.0",
-    "discord.js": "^13.6.0",
     "dotenv": "^16.0.0",
     "express": "^4.17.3",
     "node-fetch": "^3.2.3"

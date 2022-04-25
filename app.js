@@ -21,6 +21,7 @@ import {
   DeleteGuildCommands,
   TEST_COMMAND,
   FACTION_COMMAND,
+  JOIN_COMMAND,
 } from "./commands.js"
 
 // Create an express app
@@ -34,7 +35,7 @@ app.use(express.json({ verify: VerifyDiscordRequest(process.env.PUBLIC_KEY) }))
 
 app.post("/interactions", async function (req, res) {
   // Interaction type and data
-  const { type, id, data } = req.body
+  const { type, id, data, member } = req.body
 
   /**
    * Handle verification requests
@@ -53,7 +54,7 @@ app.post("/interactions", async function (req, res) {
     // "test" guild command
     if (name === "test") {
       // Send a message into the channel where command was triggered from
-      console.log("test was run")
+      console.log(`test command was run by ${member.user.username}`)
       return res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
@@ -62,11 +63,54 @@ app.post("/interactions", async function (req, res) {
         },
       })
     }
+    if (name === "faction") {
+      console.log(`faction command was run by ${member.user.username}`)
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: "How many factions?",
+          components: [
+            {
+              type: 1,
+              components: [
+                {
+                  type: 3,
+                  custom_id: "faction_select_2",
+                  options: [
+                    {
+                      label: "2 Factions",
+                      value: "2",
+                    },
+                    {
+                      label: "3 Factions",
+                      value: "3",
+                    },
+                    {
+                      label: "4 Factions",
+                      value: "4",
+                    },
+                  ],
+                  placeholder: "Choose a number of factions.",
+                  min_values: 1,
+                  max_values: 3,
+                },
+              ],
+            },
+          ],
+        },
+      })
+    }
   }
 })
 
 app.listen(3000, () => {
   console.log("Listening on port 3000")
+  // DELETE SCRIPT
+  // GetCommandsAttributes(process.env.APP_ID, process.env.GUILD_ID, "id").then(
+  //   (res) => {
+  //     DeleteGuildCommands(process.env.APP_ID, process.env.GUILD_ID, res)
+  //   }
+  // )
   // Check if guild commands from commands.json are installed (if not, install them)
   HasGuildCommands(process.env.APP_ID, process.env.GUILD_ID, [
     TEST_COMMAND,
