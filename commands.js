@@ -50,7 +50,7 @@ export async function GetCommands(appId, guildId) {
   try {
     const res = await DiscordRequest(endpoint, { method: "GET" })
     const cmds = await res.json()
-    //console.log(cmds)
+    console.log(cmds)
     return cmds
   } catch (err) {
     console.log(err)
@@ -77,8 +77,8 @@ export async function DeleteGuildCommand(appId, guildId, commandId) {
   const endpoint = `applications/${appId}/guilds/${guildId}/commands/${commandId}`
   // install command
   try {
-    await DiscordRequest(endpoint, { method: "DELETE", body: command })
-    console.log(`"${command["name"]}" has been deleted`)
+    await DiscordRequest(endpoint, { method: "DELETE" })
+    console.log(`${commandId} has been deleted`)
   } catch (err) {
     console.error(err)
   }
@@ -99,4 +99,37 @@ export const TEST_COMMAND = {
   name: "test",
   description: "Basic guild command",
   type: 1,
+}
+
+// Faction command
+export const FACTION_COMMAND = {
+  name: "faction",
+  description: "Create a faction war game",
+  type: 1,
+  options: [
+    {
+      name: "number",
+      description: "The number of factions",
+      type: 3,
+      required: true,
+      choices: [
+        {
+          name: "1",
+          value: "1",
+        },
+        {
+          name: "2",
+          value: "2",
+        },
+        {
+          name: "3",
+          value: "3",
+        },
+        {
+          name: "4",
+          value: "4",
+        },
+      ],
+    },
+  ],
 }

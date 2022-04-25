@@ -18,7 +18,9 @@ import {
   GetCommands,
   GetCommand,
   GetCommandsAttributes,
+  DeleteGuildCommands,
   TEST_COMMAND,
+  FACTION_COMMAND,
 } from "./commands.js"
 
 // Create an express app
@@ -26,12 +28,10 @@ const app = express()
 // Parse request body and verifies incoming requests using discord-interactions package
 app.use(express.json({ verify: VerifyDiscordRequest(process.env.PUBLIC_KEY) }))
 
-// Store for in-progress games. In production, you'd want to use a DB
-const activeGames = {}
-
 /**
  * Interactions endpoint URL where Discord will send HTTP requests
  */
+
 app.post("/interactions", async function (req, res) {
   // Interaction type and data
   const { type, id, data } = req.body
@@ -53,6 +53,7 @@ app.post("/interactions", async function (req, res) {
     // "test" guild command
     if (name === "test") {
       // Send a message into the channel where command was triggered from
+      console.log("test was run")
       return res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
@@ -66,8 +67,9 @@ app.post("/interactions", async function (req, res) {
 
 app.listen(3000, () => {
   console.log("Listening on port 3000")
-  GetCommandsAttributes(process.env.APP_ID, process.env.GUILD_ID, "id")
-  //console.log(GetCommands(process.env.APP_ID, process.env.GUILD_ID))
   // Check if guild commands from commands.json are installed (if not, install them)
-  HasGuildCommands(process.env.APP_ID, process.env.GUILD_ID, [TEST_COMMAND])
+  HasGuildCommands(process.env.APP_ID, process.env.GUILD_ID, [
+    TEST_COMMAND,
+    FACTION_COMMAND,
+  ])
 })
