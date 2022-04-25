@@ -9,7 +9,7 @@ const dynamodb = new AWS.DynamoDB.DocumentClient({
 import "dotenv/config"
 import express from "express"
 
-//Discord shit that no one really likes
+//These are all imports from sample code, delete unused when done, maybe re-write interaction type since it doesnt work half the time.
 import {
   InteractionType,
   InteractionResponseType,
