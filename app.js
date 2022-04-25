@@ -36,6 +36,8 @@ import {
   TEST_COMMAND,
   FACTION_COMMAND,
   JOIN_COMMAND,
+  RESET_COMMAND,
+  ASSIGN_COMMAND,
 } from "./commands.js"
 
 // Create an express app
@@ -114,14 +116,77 @@ app.post("/interactions", async function (req, res) {
         },
       })
     }
+    if (name === "reset") {
+      console.log(`factions and queue were reset by ${member.user.username}`)
+      const colors = ["blue", "green", "red", "yellow"]
+      //delete all existing factions
+      colors.forEach((team) => {
+        let params = {
+          TableName: "col_factions",
+          Key: {
+            color: team,
+          },
+        }
+        dynamodb.delete(params, function (err, data) {
+          if (err) {
+            console.error(
+              "unable to push factions to dynamo DB",
+              err,
+              err.stack
+            )
+          } else {
+            console.log(`faction has been deleted from Dynamo DB`)
+          }
+        })
+      })
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          // Fetches a random emoji to send from a helper function
+          content:
+            `${member.user.username} has reset all faction assignments` +
+            getRandomEmoji(),
+        },
+      })
+    }
+    if (name === "join") {
+      let params = {
+        TableName: "col_viewers",
+        Item: {
+          user_id: member.user.id,
+          user_name: member.user.username,
+          queued: true,
+        },
+      }
+      dynamodb.put(params, function (err, data) {
+        if (err) {
+          console.error(
+            `unable to add ${member.user.username} to viewers table.`,
+            err,
+            err.stack
+          )
+        } else {
+          console.log(`${member.user.username} added to dynamo DB`)
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              // Fetches a random emoji to send from a helper function
+              content:
+                "HA! You're in! Now be ready to join your faction if you get picked. " +
+                getRandomEmoji(),
+              flags: 1 << 6,
+            },
+          })
+        }
+      })
+    }
   }
   if (type === 3) {
     const { custom_id, values } = data
     if (custom_id === "faction_select") {
       console.log(`selected ${values}`)
       let factions = createFactions(values)
-      console.table(factions)
-      console.log(typeof factions[0].color)
+
       factions.forEach((faction, index) => {
         let params = {
           TableName: "col_factions",
@@ -140,7 +205,7 @@ app.post("/interactions", async function (req, res) {
               err.stack
             )
           } else {
-            console.log("factions added to dynamo DB")
+            console.log(`faction ${faction.color} added to dynamo DB`)
           }
         })
       })
@@ -160,5 +225,7 @@ app.listen(3000, () => {
   HasGuildCommands(process.env.APP_ID, process.env.GUILD_ID, [
     TEST_COMMAND,
     FACTION_COMMAND,
+    RESET_COMMAND,
+    JOIN_COMMAND,
   ])
 })

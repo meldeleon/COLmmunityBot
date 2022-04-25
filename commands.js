@@ -110,6 +110,20 @@ export const JOIN_COMMAND = {
 // Faction command
 export const FACTION_COMMAND = {
   name: "faction",
-  description: "Create a faction war game",
+  description: "Create a faction war game.",
+  type: 1,
+}
+
+// Assign Faction Command
+export const ASSIGN_COMMAND = {
+  name: "assign",
+  description: "Assign all joined users to a faction.",
+  type: 1,
+}
+
+// Reset Factiosn Command
+export const RESET_COMMAND = {
+  name: "reset",
+  description: "Reset a faction war game.",
   type: 1,
 }
