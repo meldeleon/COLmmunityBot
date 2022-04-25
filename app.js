@@ -49,7 +49,7 @@ app.post("/interactions", async function (req, res) {
    * See https://discord.com/developers/docs/interactions/application-commands#slash-commands
    */
   if (type === InteractionType.APPLICATION_COMMAND) {
-    const { name } = data
+    const { name, custom_id } = data
 
     // "test" guild command
     if (name === "test") {
@@ -66,33 +66,23 @@ app.post("/interactions", async function (req, res) {
     if (name === "faction") {
       console.log(`faction command was run by ${member.user.username}`)
       return res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        type: 9,
         data: {
-          content: "How many factions?",
+          title: "My Cool Modal",
+          custom_id: "cool_modal",
           components: [
             {
               type: 1,
               components: [
                 {
-                  type: 3,
-                  custom_id: "faction_select_2",
-                  options: [
-                    {
-                      label: "2 Factions",
-                      value: "2",
-                    },
-                    {
-                      label: "3 Factions",
-                      value: "3",
-                    },
-                    {
-                      label: "4 Factions",
-                      value: "4",
-                    },
-                  ],
-                  placeholder: "Choose a number of factions.",
-                  min_values: 1,
-                  max_values: 3,
+                  type: 4,
+                  custom_id: "name",
+                  label: "Name",
+                  style: 1,
+                  min_length: 1,
+                  max_length: 4000,
+                  placeholder: "John",
+                  required: true,
                 },
               ],
             },
@@ -100,6 +90,8 @@ app.post("/interactions", async function (req, res) {
         },
       })
     }
+    if (custom_id === "faction_select")
+      console.log(`faction number was selected by ${member.user.username}`)
   }
 })
 
