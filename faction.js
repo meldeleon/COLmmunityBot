@@ -28,6 +28,9 @@ const dynamodb = new AWS.DynamoDB.DocumentClient({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
 })
+import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import { ddbDocClient } from "../libs/ddbDocClient.js";
+import AsciiTable from "ascii-table"
 
 //example data block
 
@@ -56,14 +59,89 @@ export function insertUser(name, id, numberOfFactions) {
   let usersNeeded = [58, 57, 56]
 }
 
-// export function assignFaction(users, id, factions) {
-//   for
+export function createTables(factions) {
+  let factionTable = new AsciiTable("Factions")
+  const teamNames = ["Team Blue", "Team Green", " Team Red", "Team Yellow"]
+  switch (factions.length) {
+    case 2:
+      factionTable.setHeading("", teamNames[0], teamNames[1])
+      factionTable.addRow("users: ", factions[0].users, factions[1].users)
+      break
+    case 3:
+      factionTable.setHeading("", teamNames[0], teamNames[1], teamNames[2])
+      factionTable.addRow(
+        "users: ",
+        factions[0].users,
+        factions[1].users,
+        factions[2].users
+      )
+      break
+    case 4:
+      factionTable.setHeading(
+        "",
+        teamNames[0],
+        teamNames[1],
+        teamNames[2],
+        teamNames[3]
+      )
+      factionTable.addRow(
+        "users: ",
+        factions[0].users,
+        factions[1].users,
+        factions[2].users,
+        factions[3].users
+      )
+      break
+    default:
+      console.log(`cannot print factions table`)
+  }
+  return factionTable.toString()
+}
+// TODO: Fix this got-dangt filter expression.
+export function getQueuedUsers(number) {
+  let allQueuedUsers = []
+  const params = {
+    // FilterExpression: "queued = :q",
+    // ExpressionAttributeValues: {
+    //   ":q": { BOOL: true },
+    // },
+    ProjectionExpression: "user_id",
+    TableName: "col_viewers",
+  }
+  dynamodb.scan(params, function (err, data) {
+    if (err) {
+      console.log("Failed to fetch queued users", err)
+    } else {
+      console.log("Fetched queued users", data)
+      data.Items.forEach(function (element, index, array) {
+        allQueuedUsers.push(element.user_id)
+      })
+    }
+  })
+  return allQueuedUsers
+}
 
-//   let user = {
-//     userName: name,
-//     userId: id,
-//   }
+export function assignAllUsers() {}
 
-// }
+export async function assignUser(userId, factionColor) {
+  const params = {
+    TableName: "col_factions",
+    Key: {
+      color: "color",
+    },
+    ProjectionExpression: "#u",
+    ExpressionAttributeNames: { "#u": "users" },
+    UpdateExpression: "set #u = list_append(:user)",
+    ExpressionAttributeValues: {
+      ":user": [userId],
+    },
+  }
+  try {
+    const data = await dynamodb.send(new UpdateCommand(params));
+    console.log(`Added ${userId} to `{}`)
+  }
+}
+
+assignUser("109422963136208896")
 
 //mentions looks like <@user_id> like <@86890631690977280> more: https://discordjs.guide/miscellaneous/parsing-mention-arguments.html#how-discord-mentions-work

@@ -6,6 +6,7 @@ const dynamodb = new AWS.DynamoDB.DocumentClient({
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
 })
 
+import AsciiTable from "ascii-table"
 import "dotenv/config"
 import express from "express"
 
@@ -24,7 +25,7 @@ import {
 } from "./utils.js"
 
 // Imported Faction Methods
-import { createFactions } from "./faction.js"
+import { createFactions, createTables, getQueuedUsers } from "./faction.js"
 
 // Imported Commands
 import {
@@ -38,6 +39,7 @@ import {
   JOIN_COMMAND,
   RESET_COMMAND,
   ASSIGN_COMMAND,
+  ASSIGN_ALL_COMMAND,
 } from "./commands.js"
 
 // Create an express app
@@ -69,13 +71,19 @@ app.post("/interactions", async function (req, res) {
 
     // "test" guild command
     if (name === "test") {
+      let testTable = new AsciiTable("Test Table")
+      testTable
+        .setHeading("H1")
+        .setHeading("H2")
+        .addRow("item 1", "item2", "item3")
+
       // Send a message into the channel where command was triggered from
       console.log(`test command was run by ${member.user.username}`)
       return res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
           // Fetches a random emoji to send from a helper function
-          content: "hello world " + getRandomEmoji(),
+          content: `\`\`\` ${testTable} \`\`\``,
         },
       })
     }
@@ -135,7 +143,7 @@ app.post("/interactions", async function (req, res) {
               err.stack
             )
           } else {
-            console.log(`faction has been deleted from Dynamo DB`)
+            console.log(`faction ${team} has been deleted from Dynamo DB`)
           }
         })
       })
@@ -180,13 +188,23 @@ app.post("/interactions", async function (req, res) {
         }
       })
     }
+    if (name === "assign") {
+      // assign will assign a specific person to one faction
+    }
+    if (name === "assign_all") {
+      //assign all uses to a random faction
+      let queuedUsers = getQueuedUsers()
+      console.log(queuedUsers)
+    }
   }
   if (type === 3) {
+    // listening for when an admin chooses the number of factions
     const { custom_id, values } = data
+    // creates factions and pushes them to dynamo DB, alerts channel that factions have been created.
     if (custom_id === "faction_select") {
       console.log(`selected ${values}`)
       let factions = createFactions(values)
-
+      console.log(factions)
       factions.forEach((faction, index) => {
         let params = {
           TableName: "col_factions",
@@ -209,6 +227,16 @@ app.post("/interactions", async function (req, res) {
           }
         })
       })
+      let factionTable = createTables(factions)
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          // Fetches a random emoji to send from a helper function
+          content: ` ${member.user.username} has created the following factions: 
+          \`\`\` ${factionTable} \`\`\`
+          `,
+        },
+      })
     }
   }
 })
@@ -227,5 +255,7 @@ app.listen(3000, () => {
     FACTION_COMMAND,
     RESET_COMMAND,
     JOIN_COMMAND,
+    ASSIGN_COMMAND,
+    ASSIGN_ALL_COMMAND,
   ])
 })

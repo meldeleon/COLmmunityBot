@@ -117,13 +117,35 @@ export const FACTION_COMMAND = {
 // Assign Faction Command
 export const ASSIGN_COMMAND = {
   name: "assign",
-  description: "Assign all joined users to a faction.",
+  description: "To assign a specific user to a specific faction.",
+  type: 1,
+  options: [
+    {
+      type: 6,
+      name: "user",
+      description: "Pick a user to assign to a faction.",
+      required: true,
+    },
+    {
+      type: 3,
+      name: "faction",
+      description: "Pick a faction to assign the user to.",
+    },
+  ],
+}
+
+//Assign All Commands
+export const ASSIGN_ALL_COMMAND = {
+  name: "assign_all",
+  description: "Assign all queued users to random factions",
   type: 1,
 }
 
-// Reset Factiosn Command
+// Reset Factions Command
 export const RESET_COMMAND = {
   name: "reset",
   description: "Reset a faction war game.",
   type: 1,
 }
+
+//mentions looks like <@user_id> like <@86890631690977280> more: https://discordjs.guide/miscellaneous/parsing-mention-arguments.html#how-discord-mentions-work
