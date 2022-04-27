@@ -1,42 +1,27 @@
-/*
-faction.js
-CREATE Command [ADMIN]
-- Takes interaction object, and creates data objects for each faction, assigns number of open slots for each faction.
+import NodeCache from "node-cache"
+import "dotenv/config"
 
-JOIN Command [USER]
-- Takes interaction object from user, and assigned them to a faction, gives them faction roles, which allows them to join appropriate voice channel.
-- Sends the user an ephemeral message telling them their faction assignment and prompting them to join channel.
-
-LOCK Command [ADMIN]
-- Locks assigned teams.
-- Prints roster to channel
-- Creates/updates user objects for future selection to DB.
-
-
-USER Objects:
-{
-    id: 334385199974967042,
-    times_joined: 3,
-    last_date_joined: "YYYY-MM-DD"
-}
-*/
-
-//AWS and Dynamo DB
+//AWS and Dynamo DB configs
 import AWS from "aws-sdk"
 const dynamodb = new AWS.DynamoDB.DocumentClient({
   region: "us-west-2",
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
 })
-import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
-import { ddbDocClient } from "../libs/ddbDocClient.js";
-import AsciiTable from "ascii-table"
 
-//example data block
+//globals
+const myCache = new NodeCache()
+const colors = ["blue", "green", "red", "yellow"]
+const teamNames = ["Team Blue", "Team Green", " Team Red", "Team Yellow"]
+const teamHeaders = [
+  `:large_blue_diamond: ${teamNames[0]}: `,
+  `:green_square: ${teamNames[1]}:`,
+  `:heart: ${teamNames[2]}: `,
+  `:yellow_circle: ${teamNames[3]}`,
+]
 
 export function createFactions(number) {
   let factions = []
-  const colors = ["blue", "green", "red", "yellow"]
   const discordChannels = [
     "https://discord.com/channels/965039544183431188/965077230952804362",
     "https://discord.com/channels/965039544183431188/965078950449647686",
@@ -47,6 +32,7 @@ export function createFactions(number) {
     let faction = {
       color: colors[i],
       discordChannel: discordChannels[i],
+      //users: ["109422963136208896", "279052991976308738"],
       users: [],
     }
     factions.push(faction)
@@ -54,94 +40,115 @@ export function createFactions(number) {
   return factions
 }
 
-export function insertUser(name, id, numberOfFactions) {
-  // usersNeeded[0] is 2 factions, [1] is 3 factions, and [2] is four factions
-  let usersNeeded = [58, 57, 56]
-}
-
-export function createTables(factions) {
-  let factionTable = new AsciiTable("Factions")
-  const teamNames = ["Team Blue", "Team Green", " Team Red", "Team Yellow"]
+export function printTeams(factions) {
+  let printStatement = ``
+  console.log(`the length of factions are ${factions.length}`)
+  let usersList = []
+  factions.forEach((faction) => {
+    let factionTeamList = { name: faction.color, users: [] }
+    faction.users.forEach((user) => {
+      factionTeamList.users.push(`<@${user}>`)
+    })
+    usersList.push(factionTeamList)
+  })
+  console.log(usersList)
   switch (factions.length) {
     case 2:
-      factionTable.setHeading("", teamNames[0], teamNames[1])
-      factionTable.addRow("users: ", factions[0].users, factions[1].users)
+      printStatement = `${teamHeaders[0]} ${usersList[0].users} \n${teamHeaders[1]} ${usersList[1].users}`
       break
     case 3:
-      factionTable.setHeading("", teamNames[0], teamNames[1], teamNames[2])
-      factionTable.addRow(
-        "users: ",
-        factions[0].users,
-        factions[1].users,
-        factions[2].users
-      )
+      printStatement = `${teamHeaders[0]} ${usersList[0].users}\n${teamHeaders[1]} ${usersList[0].users}\n${teamHeaders[2]} ${usersList[2].users}`
       break
     case 4:
-      factionTable.setHeading(
-        "",
-        teamNames[0],
-        teamNames[1],
-        teamNames[2],
-        teamNames[3]
-      )
-      factionTable.addRow(
-        "users: ",
-        factions[0].users,
-        factions[1].users,
-        factions[2].users,
-        factions[3].users
-      )
+      printStatement = `${teamHeaders[0]} ${usersList[0].users}\n${teamHeaders[1]} ${usersList[0].users}\n${teamHeaders[2]} ${usersList[2].users}\n${teamHeaders[3]} ${usersList[3].users}`
       break
     default:
-      console.log(`cannot print factions table`)
+      console.log(`cannot print factions`)
   }
-  return factionTable.toString()
-}
-// TODO: Fix this got-dangt filter expression.
-export function getQueuedUsers(number) {
-  let allQueuedUsers = []
-  const params = {
-    // FilterExpression: "queued = :q",
-    // ExpressionAttributeValues: {
-    //   ":q": { BOOL: true },
-    // },
-    ProjectionExpression: "user_id",
-    TableName: "col_viewers",
-  }
-  dynamodb.scan(params, function (err, data) {
-    if (err) {
-      console.log("Failed to fetch queued users", err)
-    } else {
-      console.log("Fetched queued users", data)
-      data.Items.forEach(function (element, index, array) {
-        allQueuedUsers.push(element.user_id)
-      })
-    }
-  })
-  return allQueuedUsers
+  return printStatement
 }
 
-export function assignAllUsers() {}
-
-export async function assignUser(userId, factionColor) {
+export function assignUser(userId, factionColor) {
   const params = {
     TableName: "col_factions",
     Key: {
-      color: "color",
+      color: factionColor,
     },
-    ProjectionExpression: "#u",
+    UpdateExpression: "SET #u = list_append(#u, :newUser)",
     ExpressionAttributeNames: { "#u": "users" },
-    UpdateExpression: "set #u = list_append(:user)",
     ExpressionAttributeValues: {
-      ":user": [userId],
+      ":newUser": [userId],
     },
   }
-  try {
-    const data = await dynamodb.send(new UpdateCommand(params));
-    console.log(`Added ${userId} to `{}`)
-  }
+  dynamodb.update(params, function (err, data) {
+    if (err) console.log(err)
+    else console.log(`Added ${userId} to ${factionColor}`)
+  })
 }
 
-assignUser("109422963136208896")
+export function assignAllUsers(userIds) {
+  let factions = getFactions()
+  switch (factions.length) {
+    case 2:
+      userIds.forEach((useriD, index) => {
+        if (index % 2 === 0) {
+          factions[0].users.push(userId)
+        } else {
+          faction[1].users.push(userId)
+        }
+      })
 
+      break
+    case 3:
+      break
+    case 4:
+      break
+  }
+  console.log(teams)
+}
+
+export function getFactions() {
+  const factionParams = {
+    TableName: "col_factions",
+    AttributesToGet: ["color", "discord", "index", "users"],
+  }
+  dynamodb.scan(factionParams, function (err, data) {
+    if (err) {
+      console.log("Failed to fetch queued users", err)
+    } else {
+      let results = data.Items
+      return results
+    }
+  })
+}
+
+// export async function getQueuedUsers(number) {
+//   const params = {
+//     FilterExpression: "queued = :q",
+//     ExpressionAttributeValues: {
+//       ":q": true,
+//     },
+//     ProjectionExpression: "user_id",
+//     TableName: "col_viewers",
+//     Limit: number,
+//   }
+//   dynamodb.scan(params, function (err, data) {
+//     if (err) {
+//       console.log("Failed to fetch queued users", err)
+//     } else {
+//       const success = myCache.set(
+//         "queued",
+//         data.Items.map((user) => user.user_id),
+//         100000
+//       )
+//       console.log(`cached: ${success}`)
+//     }
+//   })
+// }
+
+// export async function assignAllUsers(number) {
+//   let users = await getQueuedUsers(number).then((res) => console.log(res))
+// }
+
+// assignAllUsers(2)
 //mentions looks like <@user_id> like <@86890631690977280> more: https://discordjs.guide/miscellaneous/parsing-mention-arguments.html#how-discord-mentions-work

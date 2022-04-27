@@ -7,6 +7,7 @@ const dynamodb = new AWS.DynamoDB.DocumentClient({
 })
 
 import AsciiTable from "ascii-table"
+import NodeCache from "node-cache"
 import "dotenv/config"
 import express from "express"
 
@@ -25,7 +26,7 @@ import {
 } from "./utils.js"
 
 // Imported Faction Methods
-import { createFactions, createTables, getQueuedUsers } from "./faction.js"
+import { createFactions, printTeams } from "./faction.js"
 
 // Imported Commands
 import {
@@ -83,7 +84,7 @@ app.post("/interactions", async function (req, res) {
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
           // Fetches a random emoji to send from a helper function
-          content: `\`\`\` ${testTable} \`\`\``,
+          content: "<@109422963136208896>" + "<@279052991976308738>",
         },
       })
     }
@@ -193,8 +194,6 @@ app.post("/interactions", async function (req, res) {
     }
     if (name === "assign_all") {
       //assign all uses to a random faction
-      let queuedUsers = getQueuedUsers()
-      console.log(queuedUsers)
     }
   }
   if (type === 3) {
@@ -227,14 +226,12 @@ app.post("/interactions", async function (req, res) {
           }
         })
       })
-      let factionTable = createTables(factions)
+      let factionTeamList = printTeams(factions)
       return res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
           // Fetches a random emoji to send from a helper function
-          content: ` ${member.user.username} has created the following factions: 
-          \`\`\` ${factionTable} \`\`\`
-          `,
+          content: `**${member.user.username} has created a faction war, type /join to queue up for the war!**\n factions: \n ${factionTeamList}`,
         },
       })
     }

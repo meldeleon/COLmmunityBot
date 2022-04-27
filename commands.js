@@ -1,4 +1,3 @@
-import { response } from "express"
 import { capitalize, DiscordRequest } from "./utils.js"
 
 export async function HasGuildCommands(appId, guildId, commands) {
@@ -118,7 +117,6 @@ export const FACTION_COMMAND = {
 export const ASSIGN_COMMAND = {
   name: "assign",
   description: "To assign a specific user to a specific faction.",
-  type: 1,
   options: [
     {
       type: 6,
