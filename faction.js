@@ -20,7 +20,7 @@ const discordChannels = [
 //creates initial factions objects in an array
 export function createFactions(numberOfFactions) {
   let factions = [];
-  for (let i = 0; i < number; i++) {
+  for (let i = 0; i < numberOfFactions; i++) {
     let faction = {
       color: colors[i],
       discordChannel: discordChannels[i],
@@ -35,16 +35,16 @@ export function createFactions(numberOfFactions) {
 //prints teams for discord responses
 export function printTeams(factions) {
   let printStatement = ``;
-  console.log(`the length of factions are ${factions.length}`);
+  //console.log(`the length of factions are ${factions.length}`);
   let usersList = [];
   factions.forEach((faction) => {
     let factionTeamList = { name: faction.color, users: [] };
     faction.users.forEach((user) => {
-      factionTeamList.users.push(`<@${user}>`);
+      factionTeamList.users.push(`<@${user.user_id}>`);
     });
     usersList.push(factionTeamList);
   });
-  console.log(usersList);
+  //console.log(usersList);
   switch (factions.length) {
     case 2:
       printStatement = `${teamHeaders[0]} ${usersList[0].users} \n${teamHeaders[1]} ${usersList[1].users}`;

@@ -3,14 +3,7 @@ import AsciiTable from "ascii-table";
 import "dotenv/config";
 import express from "express";
 import NodeCache from "node-cache";
-
-//AWS and Dynamo DB
-import AWS from "aws-sdk";
-const dynamodb = new AWS.DynamoDB.DocumentClient({
-  region: "us-west-2",
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-});
+const appCache = new NodeCache();
 
 //These are all imports from sample code, delete unused when done, maybe re-write interaction type since it doesnt work half the time.
 import {
@@ -27,7 +20,7 @@ import {
 } from "./utils.js";
 
 // Imported Faction Methods
-import { createFactions, printTeams } from "./faction.js";
+import { createFactions, printTeams, assignAllUsers } from "./faction.js";
 
 // Imported Commands
 import {
@@ -43,6 +36,7 @@ import {
   ASSIGN_COMMAND,
   ASSIGN_ALL_COMMAND,
 } from "./commands.js";
+import e from "express";
 
 // Create an express app
 const app = express();
@@ -69,11 +63,7 @@ app.post("/interactions", async function (req, res) {
 
     // "test" guild command
     if (name === "test") {
-      let testTable = new AsciiTable("Test Table");
-      testTable
-        .setHeading("H1")
-        .setHeading("H2")
-        .addRow("item 1", "item2", "item3");
+      console.log(appCache.get("factions"));
 
       // Send a message into the channel where command was triggered from
       console.log(`test command was run by ${member.user.username}`);
@@ -81,7 +71,7 @@ app.post("/interactions", async function (req, res) {
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
           // Fetches a random emoji to send from a helper function
-          content: "<@109422963136208896>" + "<@279052991976308738>",
+          content: "this is a test command",
         },
       });
     }
@@ -124,76 +114,75 @@ app.post("/interactions", async function (req, res) {
     }
     if (name === "reset") {
       console.log(`factions and queue were reset by ${member.user.username}`);
-      const colors = ["blue", "green", "red", "yellow"];
-      //delete all existing factions
-      colors.forEach((team) => {
-        let params = {
-          TableName: "col_factions",
-          Key: {
-            color: team,
-          },
-        };
-        dynamodb.delete(params, function (err, data) {
-          if (err) {
-            console.error(
-              "unable to push factions to dynamo DB",
-              err,
-              err.stack
-            );
-          } else {
-            console.log(`faction ${team} has been deleted from Dynamo DB`);
-          }
-        });
-      });
+      appCache.flushAll();
+
       return res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
           // Fetches a random emoji to send from a helper function
           content:
-            `${member.user.username} has reset all faction assignments` +
+            `${member.user.username} has reset all faction assignments ` +
             getRandomEmoji(),
         },
       });
     }
     if (name === "join") {
-      let params = {
-        TableName: "col_viewers",
-        Item: {
-          user_id: member.user.id,
-          user_name: member.user.username,
-          queued: true,
-        },
+      let viewer = {
+        user_id: member.user.id,
+        user_name: member.user.username,
+        queued: true,
       };
-      dynamodb.put(params, function (err, data) {
-        if (err) {
-          console.error(
-            `unable to add ${member.user.username} to dynamo DB 
-            ${params.TableName}`,
-            err,
-            err.stack
-          );
-        } else {
-          console.log(
-            `${member.user.username} added to dynamo DB viewers table`
-          );
-          return res.send({
-            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-            data: {
-              // Fetches a random emoji to send from a helper function
-              content:
-                "HA! You're in! Now be ready to join your faction if you get picked. " +
-                getRandomEmoji(),
-              flags: 1 << 6,
-            },
-          });
+      let currentQueue = appCache.get("queue");
+      let newQueue = [];
+      if (currentQueue) {
+        let isDupe = false;
+        currentQueue.forEach((x) => {
+          if (x.user_id === viewer.user_id) {
+            isDupe = true;
+          } else {
+            newQueue.push(x);
+          }
+        });
+        if (!isDupe) {
+          newQueue.push(viewer);
         }
+      } else {
+        newQueue.push(viewer);
+      }
+      appCache.set("queue", newQueue, 100000);
+      console.log(appCache.get("queue"));
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          // Fetches a random emoji to send from a helper function
+          content:
+            "HA! You're in! Now be ready to join your faction if you get picked. " +
+            getRandomEmoji(),
+          flags: 1 << 6,
+        },
       });
     }
     if (name === "assign") {
+      let currentFactions = appCache.get("factions");
+      let queuedUsers = appCache.get("queuedUsers");
       // assign will assign a specific person to one faction
     }
     if (name === "assign_all") {
       //assign all uses to a random faction
+      let currentFactions = appCache.get("factions");
+      let queuedUsers = appCache.get("queue");
+      let newFactions = assignAllUsers(queuedUsers, currentFactions);
+      appCache.set("factions", newFactions);
+      let factionTeamList = printTeams(newFactions);
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          // Fetches a random emoji to send from a helper function
+          content: `**${member.user.username} has assigned all queued users to factions: \n ${factionTeamList}`,
+        },
+      });
+    }
+    if (name == "unassign") {
     }
   }
   if (type === 3) {
@@ -204,29 +193,9 @@ app.post("/interactions", async function (req, res) {
       console.log(`selected ${values}`);
       let factions = createFactions(values);
       console.log(factions);
-      factions.forEach((faction, index) => {
-        let params = {
-          TableName: "col_factions",
-          Item: {
-            color: faction.color,
-            index: index,
-            discord_channel: faction.discordChannel,
-            users: faction.users,
-          },
-        };
-        dynamodb.put(params, function (err, data) {
-          if (err) {
-            console.error(
-              "unable to push factions to dynamo DB",
-              err,
-              err.stack
-            );
-          } else {
-            console.log(`faction ${faction.color} added to dynamo DB`);
-          }
-        });
-      });
       let factionTeamList = printTeams(factions);
+      appCache.set("factions", factions, 100000000);
+      console.log(appCache.get("factions"));
       return res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
@@ -236,7 +205,18 @@ app.post("/interactions", async function (req, res) {
       });
     }
   }
-  8787888787887678878787;
+});
+
+app.listen(3000, () => {
+  console.log("Listening on port 3000");
+
+  // DELETE SCRIPT
+  // GetCommandsAttributes(process.env.APP_ID, process.env.GUILD_ID, "id").then(
+  //   (res) => {
+  //     DeleteGuildCommands(process.env.APP_ID, process.env.GUILD_ID, res)
+  //   }
+  // )
+  // Check if guild commands from commands.json are installed (if not, install them)
   //   }
   // )
   // Check if guild commands from commands.json are installed (if not, install them)

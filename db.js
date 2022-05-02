@@ -6,6 +6,8 @@ const dynamodb = new AWS.DynamoDB.DocumentClient({
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
 });
 
+export function pushViewerToDb()
+
 export function pushUserToFactionDb(userId, factionColor) {
   const params = {
     TableName: "col_factions",
@@ -58,4 +60,88 @@ export function getQueuedUsers(numberOfUsers) {
       console.log(`fetched queued users: ${results}`);
     }
   });
+}
+
+export function resetAll(){
+    const colors = ["blue", "green", "red", "yellow"];
+    //delete all existing factions
+    colors.forEach((team) => {
+      let params = {
+        TableName: "col_factions",
+        Key: {
+          color: team,
+        },
+      };
+      dynamodb.delete(params, function (err, data) {
+        if (err) {
+          console.error(
+            "unable to push factions to dynamo DB",
+            err,
+            err.stack
+          );
+        } else {
+          console.log(`faction ${team} has been deleted from Dynamo DB`);
+        }
+      });
+    });
+}
+
+export function join(member){
+    let params = {
+        TableName: "col_viewers",
+        Item: {
+          user_id: member.user.id,
+          user_name: member.user.username,
+          queued: true,
+        },
+      };
+      dynamodb.put(params, function (err, data) {
+        if (err) {
+          console.error(
+            `unable to add ${member.user.username} to dynamo DB 
+            ${params.TableName}`,
+            err,
+            err.stack
+          );
+        } else {
+          console.log(
+            `${member.user.username} added to dynamo DB viewers table`
+          );
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              // Fetches a random emoji to send from a helper function
+              content:
+                "HA! You're in! Now be ready to join your faction if you get picked. " +
+                getRandomEmoji(),
+              flags: 1 << 6,
+            },
+          });
+        }
+      });
+}
+
+export function pushFactions(factions){
+    factions.forEach((faction, index) => {
+        let params = {
+          TableName: "col_factions",
+          Item: {
+            color: faction.color,
+            index: index,
+            discord_channel: faction.discordChannel,
+            users: faction.users,
+          },
+        };
+        dynamodb.put(params, function (err, data) {
+          if (err) {
+            console.error(
+              "unable to push factions to dynamo DB",
+              err,
+              err.stack
+            );
+          } else {
+            console.log(`faction ${faction.color} added to dynamo DB`);
+          }
+        });
+      });
 }
