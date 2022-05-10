@@ -20,7 +20,14 @@ import {
 } from "./utils.js";
 
 // Imported Faction Methods
-import { createFactions, printTeams, assignAllUsers } from "./faction.js";
+import {
+  createFactions,
+  printTeams,
+  assignAllUsers,
+  assignUser,
+  unassign,
+  unassignAll,
+} from "./faction.js";
 
 // Imported Commands
 import {
@@ -35,8 +42,10 @@ import {
   RESET_COMMAND,
   ASSIGN_COMMAND,
   ASSIGN_ALL_COMMAND,
+  UNASSIGN_COMMAND,
+  PRINT_FACTIONS_COMMAND,
+  UNASSIGN_ALL_COMMAND,
 } from "./commands.js";
-import e from "express";
 
 // Create an express app
 const app = express();
@@ -121,7 +130,7 @@ app.post("/interactions", async function (req, res) {
         data: {
           // Fetches a random emoji to send from a helper function
           content:
-            `${member.user.username} has reset all faction assignments ` +
+            `factions and queue were reset by ${member.user.username}` +
             getRandomEmoji(),
         },
       });
@@ -131,21 +140,23 @@ app.post("/interactions", async function (req, res) {
         user_id: member.user.id,
         user_name: member.user.username,
         queued: true,
+        gamesPlayed = 0, 
       };
       let currentQueue = appCache.get("queue");
       let newQueue = [];
       if (currentQueue) {
         let isDupe = false;
-        currentQueue.forEach((x) => {
+        currentQueue.forEach((x, index) => {
           if (x.user_id === viewer.user_id) {
             isDupe = true;
+            currentQueue[index].queued = true
           } else {
             newQueue.push(x);
           }
         });
         if (!isDupe) {
           newQueue.push(viewer);
-        }
+        } 
       } else {
         newQueue.push(viewer);
       }
@@ -163,26 +174,66 @@ app.post("/interactions", async function (req, res) {
       });
     }
     if (name === "assign") {
-      let currentFactions = appCache.get("factions");
-      let queuedUsers = appCache.get("queuedUsers");
       // assign will assign a specific person to one faction
+      let currentFactions = appCache.get("factions");
+      let viewer = await req.body.data.options[0].value;
+      let targetFaction = await req.body.data.options[1].value;
+      console.log(viewer, targetFaction);
+      let updatedFactions = assignUser(viewer, targetFaction, currentFactions);
+      appCache.set("factions", updatedFactions);
+      console.log(appCache.get("factions"));
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: `**<@${viewer}>has been assigned to team ${targetFaction}**`,
+        },
+      });
     }
     if (name === "assign_all") {
       //assign all uses to a random faction
       let currentFactions = appCache.get("factions");
-      let queuedUsers = appCache.get("queue");
+      let queuedUsers = appCache.get("queue").map((user) => user.user_id);
       let newFactions = assignAllUsers(queuedUsers, currentFactions);
       appCache.set("factions", newFactions);
       let factionTeamList = printTeams(newFactions);
       return res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
-          // Fetches a random emoji to send from a helper function
-          content: `**${member.user.username} has assigned all queued users to factions: \n ${factionTeamList}`,
+          content: `${member.user.username} has assigned all queued users to factions: \n ${factionTeamList}`,
         },
       });
     }
-    if (name == "unassign") {
+    if (name === "unassign") {
+      let viewer = await req.body.data.options[0].value;
+      let factions = appCache.get("factions");
+      appCache.set("factions", unassign(viewer, factions));
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: `**<@${viewer}> has been unassigned**`,
+        },
+      });
+    }
+    if (name === "unassign_all") {
+      let factions = appCache.get("factions");
+      appCache.set("factions", unassignAll(factions));
+      console.log(`${member.user.username} unassigned all users`);
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: `${
+            member.user.username
+          } unassigned all users: \n ${printTeams(appCache.get("factions"))}`,
+        },
+      });
+    }
+    if (name === "print_factions") {
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: printTeams(appCache.get("factions")),
+        },
+      });
     }
   }
   if (type === 3) {
@@ -192,7 +243,6 @@ app.post("/interactions", async function (req, res) {
     if (custom_id === "faction_select") {
       console.log(`selected ${values}`);
       let factions = createFactions(values);
-      console.log(factions);
       let factionTeamList = printTeams(factions);
       appCache.set("factions", factions, 100000000);
       console.log(appCache.get("factions"));
@@ -210,16 +260,14 @@ app.post("/interactions", async function (req, res) {
 app.listen(3000, () => {
   console.log("Listening on port 3000");
 
-  // DELETE SCRIPT
+  //DELETE SCRIPT
   // GetCommandsAttributes(process.env.APP_ID, process.env.GUILD_ID, "id").then(
   //   (res) => {
-  //     DeleteGuildCommands(process.env.APP_ID, process.env.GUILD_ID, res)
+  //     DeleteGuildCommands(process.env.APP_ID, process.env.GUILD_ID, res);
   //   }
-  // )
-  // Check if guild commands from commands.json are installed (if not, install them)
-  //   }
-  // )
-  // Check if guild commands from commands.json are installed (if not, install them)
+  // );
+
+  //INSTALLATION SCRIPT
   HasGuildCommands(process.env.APP_ID, process.env.GUILD_ID, [
     TEST_COMMAND,
     FACTION_COMMAND,
@@ -227,5 +275,8 @@ app.listen(3000, () => {
     JOIN_COMMAND,
     ASSIGN_COMMAND,
     ASSIGN_ALL_COMMAND,
+    UNASSIGN_COMMAND,
+    UNASSIGN_ALL_COMMAND,
+    PRINT_FACTIONS_COMMAND,
   ]);
 });

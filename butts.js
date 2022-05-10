@@ -1,7 +1,49 @@
-const testUsersId = Array(23)
-  .fill()
-  .map(() => Math.round(Math.random() * 100000000).toString());
+import { assignAllUsers, selectUsersFromQueue } from "./faction.js";
 
+const testUsersId = Array(80)
+  .fill()
+  .map(() => Math.round(Math.random() * 10000000).toString());
+
+const testQueue = testUsersId.map((x, index) => {
+  if (index % 2 === 0) {
+    return {
+      user_id: x,
+      user_name: `testName${x}`,
+      queued: true,
+      gamesPlayed: 1,
+    };
+  } else {
+    return {
+      user_id: x,
+      user_name: `testName${x}`,
+      queued: true,
+      gamesPlayed: 0,
+    };
+  }
+});
+console.table(testQueue);
+
+export function flipQueue(queue, factions) {
+  const assignedUsers = [];
+  factions.forEach((faction) => {
+    faction.users.forEach((userId) => {
+      assignedUsers.push(userId);
+    });
+  });
+  const newQueue = queue.map((user) => {
+    return { ...user };
+  });
+  queue.forEach((user, index) => {
+    newQueue[index].queued = false;
+    if (assignedUsers.indexOf(user.user_id) >= 0) {
+      newQueue[index].gamesPlayed++;
+    }
+  });
+  return newQueue;
+}
+
+let selectedUsers = selectUsersFromQueue(testQueue);
+console.log(selectedUsers);
 const factions = [
   {
     color: "blue",
@@ -17,49 +59,8 @@ const factions = [
   },
 ];
 
-export function assignAllUsers(userIds, factions) {
-  let assignedFactions = factions.map((faction) => {
-    return { ...faction };
-  });
-  switch (factions.length) {
-    case 2:
-      userIds.forEach((userId, index) => {
-        if (index % 2 === 0) {
-          assignedFactions[1].users.push(userId);
-        } else {
-          assignedFactions[0].users.push(userId);
-        }
-      });
-      break;
-    case 3:
-      userIds.forEach((userId, index) => {
-        if (index % 3 === 0) {
-          assignedFactions[2].users.push(userId);
-        } else if (index % 3 === 1) {
-          assignedFactions[1].users.push(userId);
-        } else {
-          assignedFactions[0].users.push(userId);
-        }
-      });
-      break;
-    case 4:
-      userIds.forEach((userId, index) => {
-        if (index % 4 === 0) {
-          assignedFactions[3].users.push(userId);
-        } else if (index % 4 === 1) {
-          assignedFactions[2].users.push(userId);
-        } else if (index % 4 === 2) {
-          assignedFactions[1].users.push(userId);
-        } else {
-          assignedFactions[0].users.push(userId);
-        }
-      });
-      break;
-  }
-  return assignedFactions;
-}
+let filledFactions = assignAllUsers(selectedUsers, factions);
 
-// console.log(testUsersId);
-assignAllUsers(testUsersId, factions).forEach((faction) => {
-  console.log(`faction ${faction.color} has ${faction.users.length} users`);
-});
+let test = flipQueue(testQueue, filledFactions);
+
+console.table(test);
