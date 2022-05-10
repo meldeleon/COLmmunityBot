@@ -140,7 +140,7 @@ app.post("/interactions", async function (req, res) {
         user_id: member.user.id,
         user_name: member.user.username,
         queued: true,
-        gamesPlayed = 0, 
+        games_played = 0, 
       };
       let currentQueue = appCache.get("queue");
       let newQueue = [];

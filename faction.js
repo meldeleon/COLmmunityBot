@@ -194,7 +194,7 @@ export function flipQueue(queue, factions) {
   queue.forEach((user, index) => {
     newQueue[index].queued = false;
     if (assignedUsers.indexOf(user.user_id)) {
-      newQueue[index].gamesPlayed++;
+      newQueue[index].games_played++;
     }
   });
   return newQueue;
@@ -221,7 +221,7 @@ export function selectUsersFromQueue(queue) {
   //TODO: REPLACE 5 WITH MAX GAMES PLAYED FOR USERS IN QUEUE
   let selectedQueue = [];
   for (let i = 0; i < 5; i++) {
-    let filteredList = joinedUsers.filter((user) => user.gamesPlayed === i);
+    let filteredList = joinedUsers.filter((user) => user.games_played === i);
     filteredList.forEach((user) => {
       if (selectedQueue.length < 57) {
         selectedQueue.push(user.user_id);
