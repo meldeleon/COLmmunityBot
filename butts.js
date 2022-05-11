@@ -1,8 +1,15 @@
-import { assignAllUsers, selectUsersFromQueue } from "./faction.js";
+import {
+  assignAllUsers,
+  selectUsersFromQueue,
+  flipQueue,
+  printTeams,
+  getWhispers,
+  join,
+} from "./faction.js"
 
-const testUsersId = Array(80)
+const testUsersId = Array(3)
   .fill()
-  .map(() => Math.round(Math.random() * 10000000).toString());
+  .map(() => Math.round(Math.random() * 10000000).toString())
 
 const testQueue = testUsersId.map((x, index) => {
   if (index % 2 === 0) {
@@ -10,40 +17,24 @@ const testQueue = testUsersId.map((x, index) => {
       user_id: x,
       user_name: `testName${x}`,
       queued: true,
-      gamesPlayed: 1,
-    };
+      games_played: 0,
+    }
   } else {
     return {
       user_id: x,
       user_name: `testName${x}`,
       queued: true,
-      gamesPlayed: 0,
-    };
-  }
-});
-console.table(testQueue);
-
-export function flipQueue(queue, factions) {
-  const assignedUsers = [];
-  factions.forEach((faction) => {
-    faction.users.forEach((userId) => {
-      assignedUsers.push(userId);
-    });
-  });
-  const newQueue = queue.map((user) => {
-    return { ...user };
-  });
-  queue.forEach((user, index) => {
-    newQueue[index].queued = false;
-    if (assignedUsers.indexOf(user.user_id) >= 0) {
-      newQueue[index].gamesPlayed++;
+      games_played: 0,
     }
-  });
-  return newQueue;
-}
+  }
+})
 
-let selectedUsers = selectUsersFromQueue(testQueue);
-console.log(selectedUsers);
+const testMember = {
+  user: {
+    id: "239nfd3884209",
+    username: "gettwitchy27",
+  },
+}
 const factions = [
   {
     color: "blue",
@@ -57,10 +48,17 @@ const factions = [
       "https://discord.com/channels/965039544183431188/965077230952804362",
     users: [],
   },
-];
+]
 
-let filledFactions = assignAllUsers(selectedUsers, factions);
+let test = join(testQueue, testMember)
+console.table(test)
 
-let test = flipQueue(testQueue, filledFactions);
+let test2 = join(test, testMember)
+console.table(test2)
 
-console.table(test);
+let assignedFactions = assignAllUsers(selectUsersFromQueue(test2), factions)
+let test3 = flipQueue(test2, assignedFactions)
+console.table(test3)
+
+let test4 = join(test3, testMember)
+console.table(test4)
