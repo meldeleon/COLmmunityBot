@@ -33,6 +33,7 @@ import {
 
 // Imported Commands
 import {
+  assignRoles,
   HasGuildCommands,
   GetCommands,
   GetCommand,
@@ -48,6 +49,7 @@ import {
   PRINT_FACTIONS_COMMAND,
   UNASSIGN_ALL_COMMAND,
   PRINT_QUEUE_COMMAND,
+  START_WAR_COMMAND,
 } from "./commands.js"
 
 // Create an express app
@@ -209,10 +211,11 @@ app.post("/interactions", async function (req, res) {
       })
     }
     if (name === "print_factions") {
+      let currentFactions = await appCache.get("factions")
       return res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
-          content: printTeams(appCache.get("factions")),
+          content: printTeams(currentFactions),
         },
       })
     }
@@ -224,17 +227,23 @@ app.post("/interactions", async function (req, res) {
         },
       })
     }
-    if ((name = "start_war")) {
+    if (name === "start_war") {
+      let currentFactions = appCache.get("factions")
       // flip the queue
-      let currentQueue = await appCache.get("queue")
-      appCache.set("queue", flipQueue(currentQueue))
+      let currentQueue = appCache.get("queue")
+      appCache.set("queue", flipQueue(currentQueue, currentFactions))
+      //assigns users
 
-      // whisper all assigned users
+      currentFactions.forEach((faction) => {
+        assignRoles(process.env.GUILD_ID, faction.users, faction.roleId)
+      })
       // print all factions as they are
       return res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
-          content: printTeams(appCache.get("factions")),
+          content: `HERE ARE THE FINAL FACTIONS, JOIN YOU VOICE CHANNEL:\n ${printTeams(
+            appCache.get("factions")
+          )}`,
         },
       })
     }
@@ -266,9 +275,9 @@ app.listen(3000, () => {
   //DELETE SCRIPT
   // GetCommandsAttributes(process.env.APP_ID, process.env.GUILD_ID, "id").then(
   //   (res) => {
-  //     DeleteGuildCommands(process.env.APP_ID, process.env.GUILD_ID, res);
+  //     DeleteGuildCommands(process.env.APP_ID, process.env.GUILD_ID, res)
   //   }
-  // );
+  // )
 
   //INSTALLATION SCRIPT
   HasGuildCommands(process.env.APP_ID, process.env.GUILD_ID, [
@@ -282,5 +291,6 @@ app.listen(3000, () => {
     UNASSIGN_ALL_COMMAND,
     PRINT_FACTIONS_COMMAND,
     PRINT_QUEUE_COMMAND,
+    START_WAR_COMMAND,
   ])
 })

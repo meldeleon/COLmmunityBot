@@ -17,6 +17,12 @@ const discordChannels = [
   "https://discord.com/channels/965039544183431188/965078506759389194",
   "https://discord.com/channels/965039544183431188/967949179328544819",
 ]
+const roleIds = [
+  "965071590293393438", // blue
+  "965071669007908934", // green
+  "965071787316609045", // red
+  "967943791644397689", // yellow
+]
 
 //creates initial factions objects in an array
 export function createFactions(numberOfFactions) {
@@ -29,6 +35,7 @@ export function createFactions(numberOfFactions) {
       //users are by id, ex: ["109422963136208896", "279052991976308738"],
       users: [],
       maxUsers: max,
+      roleId: roleIds[i],
     }
     factions.push(faction)
   }
@@ -158,6 +165,7 @@ export function assignAllUsers(userIds, factions) {
         if (index % 3 === 0) {
           assignedFactions[2].users.push(userId)
         } else if (index % 3 === 1) {
+          console.log(`assigned ${userId} to ${assignedFactions[1].color}`)
           assignedFactions[1].users.push(userId)
         } else {
           assignedFactions[0].users.push(userId)
@@ -246,7 +254,7 @@ export function join(queue, member) {
   }
   let newQueue = []
   if (queue != undefined) {
-    newQues = queue.map((user) => {
+    newQueue = queue.map((user) => {
       return { ...user }
     })
     let isDupe = false
@@ -280,12 +288,5 @@ export function printQueue(queue) {
   let responseString = `\`\`\` ${table} \`\`\``
   return responseString
 }
-
-// return {
-//   user_id: x,
-//   user_name: `testName${x}`,
-//   queued: true,
-//   games_played: 0,
-// }
 
 //mentions looks like <@user_id> like <@86890631690977280> more: https://discordjs.guide/miscellaneous/parsing-mention-arguments.html#how-discord-mentions-work

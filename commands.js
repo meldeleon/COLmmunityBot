@@ -129,6 +129,7 @@ export const ASSIGN_COMMAND = {
       name: "faction",
       description: "Pick a faction to assign the user to.",
       required: true,
+      style: 1,
     },
   ],
 }
@@ -176,12 +177,32 @@ export const PRINT_FACTIONS_COMMAND = {
 
 export const START_WAR_COMMAND = {
   name: "start_war",
-  description:
-    "Begin the faction war. This clears queue, assigns the proper roles to team members and send them voice channel invite.",
+  description: "Begin the faction war.",
 }
 export const PRINT_QUEUE_COMMAND = {
   name: "print_queue",
   description: "Print the list of queued players",
 }
+
+//assigns a role to a user
+export async function assignRole(guildId, userId, roleId) {
+  const endpoint = `guilds/${guildId}/members/${userId}/roles/${roleId}`
+  try {
+    console.log("trying to request role assign")
+    await DiscordRequest(endpoint, { method: "PUT" })
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+//assigns roles to a bunch of users
+export async function assignRoles(guildId, userIds, roleId) {
+  userIds.forEach((userId) => {
+    assignRole(guildId, userId, roleId)
+    console.log(`assigning ${userId} to roles`)
+  })
+}
+
+export async function unassignRole(appId, guildId, userId, roleId) {}
 
 //mentions looks like <@user_id> like <@86890631690977280> more: https://discordjs.guide/miscellaneous/parsing-mention-arguments.html#how-discord-mentions-work
