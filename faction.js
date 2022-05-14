@@ -17,7 +17,7 @@ const discordChannels = [
   "https://discord.com/channels/965039544183431188/965078506759389194",
   "https://discord.com/channels/965039544183431188/967949179328544819",
 ]
-const roleIds = [
+export const roleIds = [
   "965071590293393438", // blue
   "965071669007908934", // green
   "965071787316609045", // red
@@ -83,9 +83,10 @@ export function printTeams(factions) {
 export function assignUser(userId, team, factions) {
   let matchedTeam = 0
   let reachedMaximum = false
+  let lowerCaseTeam = team.toLowerCase()
   let newfactions = factions.map((faction) => {
     //check if iterated faction is the correct team
-    if (faction.color === team) {
+    if (faction.color === lowerCaseTeam) {
       //check if faction is at max users
       if (faction.maxUsers > faction.users.length) {
         let updatedFaction = { ...faction }

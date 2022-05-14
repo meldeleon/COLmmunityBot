@@ -1,5 +1,7 @@
 import { capitalize, DiscordRequest } from "./utils.js"
 
+import { roleIds } from "./faction.js"
+
 export async function HasGuildCommands(appId, guildId, commands) {
   if (guildId === "" || appId === "") return
 
@@ -93,6 +95,42 @@ export async function GetCommandsAttributes(appId, guildId, attribute) {
   return attributes
 }
 
+//assigns a role to a user
+export async function assignRole(guildId, userId, roleId) {
+  const endpoint = `guilds/${guildId}/members/${userId}/roles/${roleId}`
+  try {
+    console.log("trying to request role assign")
+    await DiscordRequest(endpoint, { method: "PUT" })
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+export function unassignRoles(guildId, userId) {
+  roleIds.forEach((roleId) => {
+    const endpoint = `guilds/${guildId}/members/${userId}/roles/${roleId}`
+    try {
+      DiscordRequest(endpoint, { method: "DELETE" })
+    } catch (err) {
+      console.log(err)
+    }
+  })
+}
+
+//assigns roles to a bunch of users
+export function assignRoles(guildId, userIds, roleId) {
+  userIds.forEach((userId) => {
+    assignRole(guildId, userId, roleId)
+    console.log(`assigning ${userId} to roles`)
+  })
+}
+
+export async function unassignRolesMultiplePeople(guildId, userIds) {
+  userIds.forEach((userId) => {
+    unassignRoles(guildId, userId)
+  })
+}
+
 // Simple test command
 export const TEST_COMMAND = {
   name: "test",
@@ -125,7 +163,7 @@ export const ASSIGN_COMMAND = {
       required: true,
     },
     {
-      type: 4,
+      type: 3,
       name: "faction",
       description: "Pick a faction to assign the user to.",
       required: true,
@@ -184,25 +222,11 @@ export const PRINT_QUEUE_COMMAND = {
   description: "Print the list of queued players",
 }
 
-//assigns a role to a user
-export async function assignRole(guildId, userId, roleId) {
-  const endpoint = `guilds/${guildId}/members/${userId}/roles/${roleId}`
-  try {
-    console.log("trying to request role assign")
-    await DiscordRequest(endpoint, { method: "PUT" })
-  } catch (err) {
-    console.error(err)
-  }
+export const RESET_ROLES_COMMAND = {
+  name: "reset_roles",
+  description: "Reset all the faction roles",
 }
-
-//assigns roles to a bunch of users
-export async function assignRoles(guildId, userIds, roleId) {
-  userIds.forEach((userId) => {
-    assignRole(guildId, userId, roleId)
-    console.log(`assigning ${userId} to roles`)
-  })
-}
-
-export async function unassignRole(appId, guildId, userId, roleId) {}
 
 //mentions looks like <@user_id> like <@86890631690977280> more: https://discordjs.guide/miscellaneous/parsing-mention-arguments.html#how-discord-mentions-work
+
+//binder of women

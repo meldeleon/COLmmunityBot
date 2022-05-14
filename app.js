@@ -34,6 +34,7 @@ import {
 // Imported Commands
 import {
   assignRoles,
+  unassignRolesMultiplePeople,
   HasGuildCommands,
   GetCommands,
   GetCommand,
@@ -50,6 +51,7 @@ import {
   UNASSIGN_ALL_COMMAND,
   PRINT_QUEUE_COMMAND,
   START_WAR_COMMAND,
+  RESET_ROLES_COMMAND,
 } from "./commands.js"
 
 // Create an express app
@@ -171,25 +173,34 @@ app.post("/interactions", async function (req, res) {
     if (name === "assign") {
       // assign will assign a specific person to one faction
       let currentFactions = appCache.get("factions")
-      let viewer = await req.body.data.options[0].value
-      let targetFaction = await req.body.data.options[1].value
-      console.log(viewer, targetFaction)
-      let updatedFactions = assignUser(viewer, targetFaction, currentFactions)
-      appCache.set("factions", updatedFactions)
-      console.log(appCache.get("factions"))
-      return res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          content: `**<@${viewer}>has been assigned to team ${targetFaction}**`,
-        },
-      })
+      if (currentFactions === undefined) {
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: `You must first initiate a faction war by typing /faction and picking how many factions you want`,
+          },
+        })
+      } else {
+        let viewer = await req.body.data.options[0].value
+        let targetFaction = await req.body.data.options[1].value
+        console.log(viewer, targetFaction)
+        let updatedFactions = assignUser(viewer, targetFaction, currentFactions)
+        appCache.set("factions", updatedFactions)
+        console.log(appCache.get("factions"))
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: `**<@${viewer}>has been assigned to team ${targetFaction}**`,
+          },
+        })
+      }
     }
     if (name === "assign_all") {
       //assign all uses to a random faction
       let currentFactions = appCache.get("factions")
       let currentQueue = appCache.get("queue")
       if (currentQueue) {
-        let queuedUser = currentQueue.map((user) => {
+        let queuedUsers = currentQueue.map((user) => {
           return user.user_id
         })
         let newFactions = assignAllUsers(queuedUsers, currentFactions)
@@ -213,27 +224,44 @@ app.post("/interactions", async function (req, res) {
     if (name === "unassign") {
       let viewer = await req.body.data.options[0].value
       let factions = appCache.get("factions")
-      appCache.set("factions", unassign(viewer, factions))
-      return res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          content: `**<@${viewer}> has been unassigned**`,
-        },
-      })
+      if (factions) {
+        appCache.set("factions", unassign(viewer, factions))
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: `**<@${viewer}> has been unassigned**`,
+          },
+        })
+      } else {
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: `You cannot unassign users until you create a faction`,
+          },
+        })
+      }
     }
     if (name === "unassign_all") {
       let factions = appCache.get("factions")
-
-      appCache.set("factions", unassignAll(factions))
-      console.log(`${member.user.username} unassigned all users`)
-      return res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          content: `${
-            member.user.username
-          } unassigned all users: \n ${printTeams(appCache.get("factions"))}`,
-        },
-      })
+      if (factions) {
+        appCache.set("factions", unassignAll(factions))
+        console.log(`${member.user.username} unassigned all users`)
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: `${
+              member.user.username
+            } unassigned all users: \n ${printTeams(appCache.get("factions"))}`,
+          },
+        })
+      } else {
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: `You cannot unassign users until you create a faction`,
+          },
+        })
+      }
     }
     if (name === "print_factions") {
       let currentFactions = await appCache.get("factions")
@@ -252,25 +280,52 @@ app.post("/interactions", async function (req, res) {
         },
       })
     }
+    if (name === "reset_roles") {
+      let currentQueue = appCache.get("queue")
+      if (currentQueue) {
+        let userIds = currentQueue.map((user) => user.user_id)
+        unassignRolesMultiplePeople(process.env.GUILD_ID, userIds)
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: `${member.user.id} reset faction roles for all members in queue.`,
+          },
+        })
+      } else {
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: `There is no one in queue to unassign roles.`,
+          },
+        })
+      }
+    }
     if (name === "start_war") {
       let currentFactions = appCache.get("factions")
-      // flip the queue
       let currentQueue = appCache.get("queue")
-      appCache.set("queue", flipQueue(currentQueue, currentFactions))
-      //assigns users
-
-      currentFactions.forEach((faction) => {
-        assignRoles(process.env.GUILD_ID, faction.users, faction.roleId)
-      })
-      // print all factions as they are
-      return res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          content: `HERE ARE THE FINAL FACTIONS, JOIN YOU VOICE CHANNEL:\n ${printTeams(
-            appCache.get("factions")
-          )}`,
-        },
-      })
+      if (currentFactions && currentQueue) {
+        appCache.set("queue", flipQueue(currentQueue, currentFactions))
+        //assign faction roles
+        currentFactions.forEach((faction) => {
+          assignRoles(process.env.GUILD_ID, faction.users, faction.roleId)
+        })
+        // print all factions as they are
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: `HERE ARE THE FINAL FACTIONS, JOIN YOUR VOICE CHANNEL:\n ${printTeams(
+              appCache.get("factions")
+            )}`,
+          },
+        })
+      } else {
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: `You must create a faction and have people type /join first.`,
+          },
+        })
+      }
     }
   }
   if (type === 3) {
@@ -303,6 +358,13 @@ app.listen(3000, () => {
   //     DeleteGuildCommands(process.env.APP_ID, process.env.GUILD_ID, res)
   //   }
   // )
+  // GetScript
+  // console.log(
+  //   GetCommandsAttributes(process.env.APP_ID, process.env.GUILD_ID, "id")
+  // )
+  // DeleteGuildCommands(process.env.APP_ID, process.env.GUILD_ID, [
+  //   "974845039861719120",
+  // ])
 
   //INSTALLATION SCRIPT
   HasGuildCommands(process.env.APP_ID, process.env.GUILD_ID, [
@@ -317,5 +379,6 @@ app.listen(3000, () => {
     PRINT_FACTIONS_COMMAND,
     PRINT_QUEUE_COMMAND,
     START_WAR_COMMAND,
+    RESET_ROLES_COMMAND,
   ])
 })
