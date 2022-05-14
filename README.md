@@ -33,7 +33,16 @@ COLmmunity chat bot is a bot created for Complexity's community nights. It's pri
 |                 |                                         |           |             |
 |                 |                                         |           |             |
 
-## TO-DO // dev notes
+## Dev notes
 
 1. Please note that the current version 1.0.0 relies entirely on app cache and has no persistent database. There does exist a file for db.js that contains dynamoDB methods and pushes the items that exist in app cache to a DB. We plan to move from app cache to a cloud-based DB at a future version.
-1.
+
+## STUFF TO DO:
+
+1. add admin only for admin.
+1. write start_war faction object to
+
+## KNOWN BUGS:
+
+1. assign function is looking for an integer instead of a string.
+1. two people in a queue, with three teams, the index 1 users doesn't get assigned.
