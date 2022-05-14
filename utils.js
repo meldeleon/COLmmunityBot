@@ -62,3 +62,23 @@ export function getRandomEmoji() {
 export function capitalize(str) {
   return str.charAt(0).toUpperCase() + str.slice(1)
 }
+
+export function memberAdmin(member) {
+  if (member.roles.indexOf("965040006353805312") != -1) {
+    console.log(`${member.user.username} is an admin`)
+    return true
+  } else {
+    return false
+  }
+}
+
+export function notAdminMsg(res, InteractionResponseType) {
+  return res.send({
+    type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+    data: {
+      // Fetches a random emoji to send from a helper function
+      content: "You must be an admin to run that command",
+      flags: 1 << 6, //ephemeral msg flag
+    },
+  })
+}

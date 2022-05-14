@@ -16,6 +16,8 @@ import {
   VerifyDiscordRequest,
   getRandomEmoji,
   DiscordRequest,
+  memberAdmin,
+  notAdminMsg,
 } from "./utils.js"
 
 // Imported Faction Methods
@@ -67,6 +69,7 @@ app.post("/interactions", async function (req, res) {
   // Interaction type and data
   const { type, id, data, member } = req.body
   //Handle verification requests
+  const isAdmin = memberAdmin(member)
 
   if (type === InteractionType.PING) {
     return res.send({ type: InteractionResponseType.PONG })
@@ -79,80 +82,98 @@ app.post("/interactions", async function (req, res) {
 
     // "test" guild command
     if (name === "test") {
-      const testUsersId = Array(2)
-        .fill()
-        .map(() => Math.round(Math.random() * 10000000).toString())
+      if (isAdmin) {
+        const testUsersId = Array(2)
+          .fill()
+          .map(() => Math.round(Math.random() * 10000000).toString())
 
-      const testQueue = testUsersId.map((x, index) => {
-        return {
-          user_id: x,
-          user_name: `testName${x}`,
-          queued: true,
-          games_played: 0,
-        }
-      })
-      appCache.set("queue", testQueue)
-      console.log("pushed test Queue to cache")
-      // Send a message into the channel where command was triggered from
-      console.log(`test command was run by ${member.user.username}`)
-      return res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          // Fetches a random emoji to send from a helper function
-          content: "this is a test command",
-        },
-      })
+        const testQueue = testUsersId.map((x, index) => {
+          return {
+            user_id: x,
+            user_name: `testName${x}`,
+            queued: true,
+            games_played: 0,
+          }
+        })
+        appCache.set("queue", testQueue)
+        console.log("pushed test Queue to cache")
+        // Send a message into the channel where command was triggered from
+        console.log({ member })
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            // Fetches a random emoji to send from a helper function
+            content: "this is a test command",
+          },
+        })
+      } else {
+        return notAdminMsg(res, InteractionResponseType)
+      }
     }
     if (name === "faction") {
-      console.log(`faction command was run by ${member.user.username}`)
-      return res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          content: "How many factions?",
-          components: [
-            {
-              type: 1,
-              components: [
-                {
-                  type: 3,
-                  custom_id: "faction_select",
-                  options: [
-                    {
-                      label: "2 Factions",
-                      value: "2",
-                    },
-                    {
-                      label: "3 Factions",
-                      value: "3",
-                    },
-                    {
-                      label: "4 Factions",
-                      value: "4",
-                    },
-                  ],
-                  placeholder: "Choose a number of factions.",
-                  min_values: 1,
-                  max_values: 1,
-                },
-              ],
-            },
-          ],
-        },
-      })
+      if (isAdmin) {
+        console.log(`faction command was run by ${member.user.username}`)
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: "How many factions?",
+            components: [
+              {
+                type: 1,
+                components: [
+                  {
+                    type: 3,
+                    custom_id: "faction_select",
+                    options: [
+                      {
+                        label: "2 Factions",
+                        value: "2",
+                      },
+                      {
+                        label: "3 Factions",
+                        value: "3",
+                      },
+                      {
+                        label: "4 Factions",
+                        value: "4",
+                      },
+                    ],
+                    placeholder: "Choose a number of factions.",
+                    min_values: 1,
+                    max_values: 1,
+                  },
+                ],
+              },
+            ],
+          },
+        })
+      } else {
+        return notAdminMsg(res, InteractionResponseType)
+      }
     }
     if (name === "reset") {
-      console.log(`factions and queue were reset by ${member.user.username}`)
-      appCache.flushAll()
+      if (isAdmin) {
+        console.log(`factions and queue were reset by ${member.user.username}`)
+        appCache.flushAll()
 
-      return res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          // Fetches a random emoji to send from a helper function
-          content:
-            `factions and queue were reset by ${member.user.username}` +
-            getRandomEmoji(),
-        },
-      })
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            // Fetches a random emoji to send from a helper function
+            content:
+              `factions and queue were reset by ${member.user.username}` +
+              getRandomEmoji(),
+          },
+        })
+      } else {
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            // Fetches a random emoji to send from a helper function
+            content: "You must be an admin to run that command",
+          },
+        })
+      }
     }
     if (name === "join") {
       let currentQueue = appCache.get("queue")
@@ -171,160 +192,209 @@ app.post("/interactions", async function (req, res) {
       })
     }
     if (name === "assign") {
-      // assign will assign a specific person to one faction
-      let currentFactions = appCache.get("factions")
-      if (currentFactions === undefined) {
-        return res.send({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            content: `You must first initiate a faction war by typing /faction and picking how many factions you want`,
-          },
-        })
+      if (isAdmin) {
+        // assign will assign a specific person to one faction
+        let currentFactions = appCache.get("factions")
+        if (currentFactions === undefined) {
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              content: `You must first initiate a faction war by typing /faction and picking how many factions you want`,
+            },
+          })
+        } else {
+          let viewer = await req.body.data.options[0].value
+          let targetFaction = await req.body.data.options[1].value
+          console.log(viewer, targetFaction)
+          let updatedFactions = assignUser(
+            viewer,
+            targetFaction,
+            currentFactions
+          )
+          appCache.set("factions", updatedFactions)
+          console.log(appCache.get("factions"))
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              content: `**<@${viewer}>has been assigned to team ${targetFaction}**`,
+            },
+          })
+        }
       } else {
-        let viewer = await req.body.data.options[0].value
-        let targetFaction = await req.body.data.options[1].value
-        console.log(viewer, targetFaction)
-        let updatedFactions = assignUser(viewer, targetFaction, currentFactions)
-        appCache.set("factions", updatedFactions)
-        console.log(appCache.get("factions"))
-        return res.send({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            content: `**<@${viewer}>has been assigned to team ${targetFaction}**`,
-          },
-        })
+        return notAdminMsg(res, InteractionResponseType)
       }
     }
     if (name === "assign_all") {
-      //assign all uses to a random faction
-      let currentFactions = appCache.get("factions")
-      let currentQueue = appCache.get("queue")
-      if (currentQueue) {
-        let queuedUsers = currentQueue.map((user) => {
-          return user.user_id
-        })
-        let newFactions = assignAllUsers(queuedUsers, currentFactions)
-        appCache.set("factions", newFactions)
-        let factionTeamList = printTeams(newFactions)
-        return res.send({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            content: `${member.user.username} has assigned all queued users to factions: \n ${factionTeamList}`,
-          },
-        })
+      if (isAdmin) {
+        //assign all uses to a random faction
+        let currentFactions = appCache.get("factions")
+        let currentQueue = appCache.get("queue")
+        if (currentQueue) {
+          let queuedUsers = currentQueue.map((user) => {
+            return user.user_id
+          })
+          let newFactions = assignAllUsers(queuedUsers, currentFactions)
+          appCache.set("factions", newFactions)
+          let factionTeamList = printTeams(newFactions)
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              content: `${member.user.username} has assigned all queued users to factions: \n ${factionTeamList}`,
+            },
+          })
+        } else {
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              content: `There is no one in queue to assign. Type /join to enter the queue!`,
+            },
+          })
+        }
       } else {
-        return res.send({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            content: `There is no one in queue to assign. Type /join to enter the queue!`,
-          },
-        })
+        return notAdminMsg(res, InteractionResponseType)
       }
     }
     if (name === "unassign") {
-      let viewer = await req.body.data.options[0].value
-      let factions = appCache.get("factions")
-      if (factions) {
-        appCache.set("factions", unassign(viewer, factions))
-        return res.send({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            content: `**<@${viewer}> has been unassigned**`,
-          },
-        })
+      if (isAdmin) {
+        let viewer = await req.body.data.options[0].value
+        let factions = appCache.get("factions")
+        if (factions) {
+          appCache.set("factions", unassign(viewer, factions))
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              content: `**<@${viewer}> has been unassigned**`,
+            },
+          })
+        } else {
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              content: `You cannot unassign users until you create a faction`,
+            },
+          })
+        }
       } else {
-        return res.send({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            content: `You cannot unassign users until you create a faction`,
-          },
-        })
+        return notAdminMsg(res, InteractionResponseType)
       }
     }
     if (name === "unassign_all") {
-      let factions = appCache.get("factions")
-      if (factions) {
-        appCache.set("factions", unassignAll(factions))
-        console.log(`${member.user.username} unassigned all users`)
-        return res.send({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            content: `${
-              member.user.username
-            } unassigned all users: \n ${printTeams(appCache.get("factions"))}`,
-          },
-        })
+      if (isAdmin) {
+        let factions = appCache.get("factions")
+        if (factions) {
+          appCache.set("factions", unassignAll(factions))
+          console.log(`${member.user.username} unassigned all users`)
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              content: `${
+                member.user.username
+              } unassigned all users: \n ${printTeams(
+                appCache.get("factions")
+              )}`,
+            },
+          })
+        } else {
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              content: `You cannot unassign users until you create a faction`,
+            },
+          })
+        }
       } else {
-        return res.send({
-          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-          data: {
-            content: `You cannot unassign users until you create a faction`,
-          },
-        })
+        return notAdminMsg(res, InteractionResponseType)
       }
     }
     if (name === "print_factions") {
       let currentFactions = await appCache.get("factions")
-      return res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          content: printTeams(currentFactions),
-        },
-      })
-    }
-    if (name === "print_queue") {
-      return res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          content: printQueue(appCache.get("queue")),
-        },
-      })
-    }
-    if (name === "reset_roles") {
-      let currentQueue = appCache.get("queue")
-      if (currentQueue) {
-        let userIds = currentQueue.map((user) => user.user_id)
-        unassignRolesMultiplePeople(process.env.GUILD_ID, userIds)
+      if (currentFactions) {
         return res.send({
           type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
           data: {
-            content: `${member.user.id} reset faction roles for all members in queue.`,
+            content: printTeams(currentFactions),
           },
         })
       } else {
         return res.send({
           type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
           data: {
-            content: `There is no one in queue to unassign roles.`,
+            content: `No factions exist yet to be printed.`,
           },
         })
       }
     }
-    if (name === "start_war") {
-      let currentFactions = appCache.get("factions")
+    if (name === "print_queue") {
       let currentQueue = appCache.get("queue")
-      if (currentFactions && currentQueue) {
-        appCache.set("queue", flipQueue(currentQueue, currentFactions))
-        //assign faction roles
-        currentFactions.forEach((faction) => {
-          assignRoles(process.env.GUILD_ID, faction.users, faction.roleId)
-        })
-        // print all factions as they are
+      if (currentQueue) {
         return res.send({
           type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
           data: {
-            content: `HERE ARE THE FINAL FACTIONS, JOIN YOUR VOICE CHANNEL:\n ${printTeams(
-              appCache.get("factions")
-            )}`,
+            content: printQueue(currentQueue),
           },
         })
       } else {
         return res.send({
           type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
           data: {
-            content: `You must create a faction and have people type /join first.`,
+            content: `There is currently no queue to print. Ask people to /join!`,
           },
         })
+      }
+    }
+    if (name === "reset_roles") {
+      if (isAdmin) {
+        let currentQueue = appCache.get("queue")
+        if (currentQueue) {
+          let userIds = currentQueue.map((user) => user.user_id)
+          unassignRolesMultiplePeople(process.env.GUILD_ID, userIds)
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              content: `${member.user.username} reset faction roles for all members in queue.`,
+            },
+          })
+        } else {
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              content: `There is no one in queue to unassign roles.`,
+            },
+          })
+        }
+      } else {
+        return notAdminMsg(res, InteractionResponseType)
+      }
+    }
+    if (name === "start_war") {
+      if (isAdmin) {
+        let currentFactions = appCache.get("factions")
+        let currentQueue = appCache.get("queue")
+        if (currentFactions && currentQueue) {
+          appCache.set("queue", flipQueue(currentQueue, currentFactions))
+          //assign faction roles
+          currentFactions.forEach((faction) => {
+            assignRoles(process.env.GUILD_ID, faction.users, faction.roleId)
+          })
+          // print all factions as they are
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              content: `HERE ARE THE FINAL FACTIONS, JOIN YOUR VOICE CHANNEL:\n ${printTeams(
+                appCache.get("factions")
+              )}`,
+            },
+          })
+        } else {
+          return res.send({
+            type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+            data: {
+              content: `You must create a faction and have people type /join first.`,
+            },
+          })
+        }
+      } else {
+        return notAdminMsg(res, InteractionResponseType)
       }
     }
   }
