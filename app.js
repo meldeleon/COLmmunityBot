@@ -77,8 +77,20 @@ app.post("/interactions", async function (req, res) {
 
     // "test" guild command
     if (name === "test") {
-      console.log(appCache.get("factions"))
+      const testUsersId = Array(2)
+        .fill()
+        .map(() => Math.round(Math.random() * 10000000).toString())
 
+      const testQueue = testUsersId.map((x, index) => {
+        return {
+          user_id: x,
+          user_name: `testName${x}`,
+          queued: true,
+          games_played: 0,
+        }
+      })
+      appCache.set("queue", testQueue)
+      console.log("pushed test Queue to cache")
       // Send a message into the channel where command was triggered from
       console.log(`test command was run by ${member.user.username}`)
       return res.send({
@@ -175,16 +187,28 @@ app.post("/interactions", async function (req, res) {
     if (name === "assign_all") {
       //assign all uses to a random faction
       let currentFactions = appCache.get("factions")
-      let queuedUsers = appCache.get("queue").map((user) => user.user_id)
-      let newFactions = assignAllUsers(queuedUsers, currentFactions)
-      appCache.set("factions", newFactions)
-      let factionTeamList = printTeams(newFactions)
-      return res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          content: `${member.user.username} has assigned all queued users to factions: \n ${factionTeamList}`,
-        },
-      })
+      let currentQueue = appCache.get("queue")
+      if (currentQueue) {
+        let queuedUser = currentQueue.map((user) => {
+          return user.user_id
+        })
+        let newFactions = assignAllUsers(queuedUsers, currentFactions)
+        appCache.set("factions", newFactions)
+        let factionTeamList = printTeams(newFactions)
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: `${member.user.username} has assigned all queued users to factions: \n ${factionTeamList}`,
+          },
+        })
+      } else {
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            content: `There is no one in queue to assign. Type /join to enter the queue!`,
+          },
+        })
+      }
     }
     if (name === "unassign") {
       let viewer = await req.body.data.options[0].value
@@ -199,6 +223,7 @@ app.post("/interactions", async function (req, res) {
     }
     if (name === "unassign_all") {
       let factions = appCache.get("factions")
+
       appCache.set("factions", unassignAll(factions))
       console.log(`${member.user.username} unassigned all users`)
       return res.send({

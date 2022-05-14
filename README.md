@@ -45,4 +45,3 @@ COLmmunity chat bot is a bot created for Complexity's community nights. It's pri
 ## KNOWN BUGS:
 
 1. assign function is looking for an integer instead of a string.
-1. two people in a queue, with three teams, the index 1 users doesn't get assigned.

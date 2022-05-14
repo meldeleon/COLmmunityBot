@@ -68,10 +68,10 @@ export function printTeams(factions) {
       printStatement = `${teamHeaders[0]} ${usersList[0].users} \n${teamHeaders[1]} ${usersList[1].users}`
       break
     case 3:
-      printStatement = `${teamHeaders[0]} ${usersList[0].users}\n${teamHeaders[1]} ${usersList[0].users}\n${teamHeaders[2]} ${usersList[2].users}`
+      printStatement = `${teamHeaders[0]} ${usersList[0].users}\n${teamHeaders[1]} ${usersList[1].users}\n${teamHeaders[2]} ${usersList[2].users}`
       break
     case 4:
-      printStatement = `${teamHeaders[0]} ${usersList[0].users}\n${teamHeaders[1]} ${usersList[0].users}\n${teamHeaders[2]} ${usersList[2].users}\n${teamHeaders[3]} ${usersList[3].users}`
+      printStatement = `${teamHeaders[0]} ${usersList[0].users}\n${teamHeaders[1]} ${usersList[1].users}\n${teamHeaders[2]} ${usersList[2].users}\n${teamHeaders[3]} ${usersList[3].users}`
       break
     default:
       console.log(`cannot print factions`)
@@ -146,11 +146,10 @@ export function unassignAll(factions) {
 //assigns queued users evenly across factions randomly. RETURNS FACTION ARRAY.
 export function assignAllUsers(userIds, factions) {
   //TODO: IF USER LIST IS LARGER THAN 57, RANDOMLY SELECT 57 OF THEM.
-
   let assignedFactions = factions.map((faction) => {
     return { ...faction }
   })
-  switch (factions.length) {
+  switch (assignedFactions.length) {
     case 2:
       userIds.forEach((userId, index) => {
         if (index % 2 === 0) {
