@@ -12,12 +12,14 @@ import {
   MessageComponentTypes,
   ButtonStyleTypes,
 } from "discord-interactions"
+
 import {
-  VerifyDiscordRequest,
+  verifydiscordRequest,
   getRandomEmoji,
-  DiscordRequest,
+  discordRequest,
   memberAdmin,
   notAdminMsg,
+  testQueue,
 } from "./utils.js"
 
 // Imported Faction Methods
@@ -35,15 +37,11 @@ import {
 
 // Imported Commands
 import {
-  assignRoles,
-  unassignRolesMultiplePeople,
-  HasGuildCommands,
-  GetCommands,
-  GetCommand,
-  GetCommandsAttributes,
-  DeleteGuildCommands,
+  assignRolesWait,
+  hasGuildCommands,
+  getGuildMembers,
   TEST_COMMAND,
-  FACTION_COMMAND,
+  START_FACTION_COMMAND,
   JOIN_COMMAND,
   RESET_COMMAND,
   ASSIGN_COMMAND,
@@ -59,7 +57,7 @@ import {
 // Create an express app
 const app = express()
 // Parse request body and verifies incoming requests using discord-interactions package
-app.use(express.json({ verify: VerifyDiscordRequest(process.env.PUBLIC_KEY) }))
+app.use(express.json({ verify: verifydiscordRequest(process.env.PUBLIC_KEY) }))
 
 /**
  * Interactions endpoint URL where Discord will send HTTP requests
@@ -79,26 +77,12 @@ app.post("/interactions", async function (req, res) {
 
   if (type === InteractionType.APPLICATION_COMMAND) {
     const { name, custom_id } = data
-
     // "test" guild command
     if (name === "test") {
       if (isAdmin) {
-        const testUsersId = Array(2)
-          .fill()
-          .map(() => Math.round(Math.random() * 10000000).toString())
-
-        const testQueue = testUsersId.map((x, index) => {
-          return {
-            user_id: x,
-            user_name: `testName${x}`,
-            queued: true,
-            games_played: 0,
-          }
-        })
-        appCache.set("queue", testQueue)
+        console.log(await getGuildMembers(process.env.GUILD_ID))
         console.log("pushed test Queue to cache")
         // Send a message into the channel where command was triggered from
-        console.log({ member })
         return res.send({
           type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
           data: {
@@ -110,7 +94,7 @@ app.post("/interactions", async function (req, res) {
         return notAdminMsg(res, InteractionResponseType)
       }
     }
-    if (name === "faction") {
+    if (name === "start_faction") {
       if (isAdmin) {
         console.log(`faction command was run by ${member.user.username}`)
         return res.send({
@@ -229,7 +213,7 @@ app.post("/interactions", async function (req, res) {
         //assign all uses to a random faction
         let currentFactions = appCache.get("factions")
         let currentQueue = appCache.get("queue")
-        if (currentQueue) {
+        if (currentQueue && currentFactions) {
           let queuedUsers = currentQueue.map((user) => {
             return user.user_id
           })
@@ -246,7 +230,7 @@ app.post("/interactions", async function (req, res) {
           return res.send({
             type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
             data: {
-              content: `There is no one in queue to assign. Type /join to enter the queue!`,
+              content: `There is no one in queue to assign or there are factions initiated.`,
             },
           })
         }
@@ -372,11 +356,10 @@ app.post("/interactions", async function (req, res) {
         let currentQueue = appCache.get("queue")
         if (currentFactions && currentQueue) {
           appCache.set("queue", flipQueue(currentQueue, currentFactions))
-          //assign faction roles
-          currentFactions.forEach((faction) => {
-            assignRoles(process.env.GUILD_ID, faction.users, faction.roleId)
-          })
-          // print all factions as they are
+          for await (const faction of currentFactions) {
+            assignRolesWait(process.env.GUILD_ID, faction.users, faction.roleId)
+          }
+          // print all current faction assignments
           return res.send({
             type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
             data: {
@@ -399,47 +382,50 @@ app.post("/interactions", async function (req, res) {
     }
   }
   if (type === 3) {
-    // listening for when an admin chooses the number of factions
-    const { custom_id, values } = data
-    // creates factions and pushes them to dynamo DB, alerts channel that factions have been created.
-    if (custom_id === "faction_select") {
-      console.log(`selected ${values}`)
-      let factions = createFactions(values)
-      let factionTeamList = printTeams(factions)
-      appCache.set("factions", factions, 100000000)
-      console.log(appCache.get("factions"))
-      return res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          // Fetches a random emoji to send from a helper function
-          content: `**${member.user.username} has created a faction war, type /join to queue up for the war!**\n factions: \n ${factionTeamList}`,
-        },
-      })
+    if (isAdmin) {
+      // listening for when an admin chooses the number of factions
+      const { custom_id, values } = data
+      // creates factions and pushes them to dynamo DB, alerts channel that factions have been created.
+      if (custom_id === "faction_select") {
+        console.log(`selected ${values}`)
+        let factions = createFactions(values)
+        let factionTeamList = printTeams(factions)
+        appCache.set("factions", factions, 100000000)
+        console.log(appCache.get("factions"))
+        return res.send({
+          type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+          data: {
+            // Fetches a random emoji to send from a helper function
+            content: `**${member.user.username} has created a faction war, type /join to queue up for the war!**\n factions: \n ${factionTeamList}`,
+          },
+        })
+      }
+    } else {
+      return notAdminMsg(res, InteractionResponseType)
     }
   }
 })
 
 app.listen(3000, () => {
   console.log("Listening on port 3000")
-
   //DELETE SCRIPT
-  // GetCommandsAttributes(process.env.APP_ID, process.env.GUILD_ID, "id").then(
+  // getCommandsAttributes(process.env.APP_ID, process.env.GUILD_ID, "id").then(
   //   (res) => {
   //     DeleteGuildCommands(process.env.APP_ID, process.env.GUILD_ID, res)
   //   }
   // )
   // GetScript
   // console.log(
-  //   GetCommandsAttributes(process.env.APP_ID, process.env.GUILD_ID, "id")
+  //   getCommandsAttributes(process.env.APP_ID, process.env.GUILD_ID, "id")
   // )
   // DeleteGuildCommands(process.env.APP_ID, process.env.GUILD_ID, [
-  //   "974845039861719120",
+  //   "974565739816185876",
   // ])
 
   //INSTALLATION SCRIPT
-  HasGuildCommands(process.env.APP_ID, process.env.GUILD_ID, [
+  hasGuildCommands(process.env.APP_ID, process.env.GUILD_ID, [
     TEST_COMMAND,
-    FACTION_COMMAND,
+    START_FACTION_COMMAND,
     RESET_COMMAND,
     JOIN_COMMAND,
     ASSIGN_COMMAND,

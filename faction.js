@@ -27,7 +27,7 @@ export const roleIds = [
 //creates initial factions objects in an array
 export function createFactions(numberOfFactions) {
   let factions = []
-  let max = Math.ceil(57 / numberOfFactions)
+  let max = Math.ceil((60 - numberOfFactions) / numberOfFactions)
   for (let i = 0; i < numberOfFactions; i++) {
     let faction = {
       color: colors[i],

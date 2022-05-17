@@ -33,6 +33,11 @@ COLmmunity chat bot is a bot created for Complexity's community nights. It's pri
 
 ## STUFF TO DO:
 
-1. write start_war faction object to DynamoDB
-1. pull games played from DynamoDB
-1. deploy to Lambda or EC2???
+1. Add better logging for user input
+1. write to DB so that when we crash we don't lose everything???
+1. deploy to Lambda or EC2??? API GATEWAY??? i dunno know, something kinda of API gateway solution through AWS
+
+## KNOWN BUGS
+
+1. When a non-admin user tries to run an admin command, but they have no roles, the bot crashes.
+1. We are getting rate limited for assigning roles, the bot crashes.
